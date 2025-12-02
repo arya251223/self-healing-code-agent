@@ -209,7 +209,7 @@ $ python -m interface.cli heal --file src/buggy_code.py
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/self-healing-code-agent.git
+git clone https://github.com/arya251223/self-healing-code-agent.git
 cd self-healing-code-agent
 ```
 
@@ -1069,6 +1069,7 @@ A: Free if you run local models. Cloud API usage costs vary ($0.10-$1 per healin
 
 **Version**: 1.0.0  
 **Last Updated**: November 2025 
+**Author: Aryan**
 **Status**: ✅ Production Ready
 
 ---

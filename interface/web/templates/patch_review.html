@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patch Review - {{ run.run_id[:8] }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Patch Review</h1>
+            <p>Run ID: {{ run.run_id }}</p>
+        </header>
+
+        <nav>
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+        </nav>
+
+        <main>
+            <section class="patch-review">
+                <div class="review-header">
+                    <h2>Bug Report</h2>
+                    <span class="status-badge {{ run.result.status.lower() }}">{{ run.result.status }}</span>
+                </div>
+
+                {% if run.result.details.patch %}
+                <div class="patch-section">
+                    <h3>Generated Patch</h3>
+                    <pre><code>{{ run.result.details.patch.patch }}</code></pre>
+                    
+                    <div class="patch-metadata">
+                        <p><strong>Lines Changed:</strong> {{ run.result.details.patch.metadata.lines_changed }}</p>
+                        <p><strong>Strategy:</strong> {{ run.result.details.patch.strategy }}</p>
+                        <p><strong>Confidence:</strong> {{ "%.1f"|format(run.result.details.patch.confidence * 100) }}%</p>
+                    </div>
+                </div>
+
+                {% if run.result.details.evaluation %}
+                <div class="evaluation-section">
+                    <h3>Quality Evaluation</h3>
+                    <p><strong>Verdict:</strong> {{ run.result.details.evaluation.verdict }}</p>
+                    <p><strong>Rationale:</strong> {{ run.result.details.evaluation.rationale }}</p>
+                    
+                    {% if run.result.details.evaluation.issues_found %}
+                    <div class="issues">
+                        <h4>Issues Found:</h4>
+                        <ul>
+                        {% for issue in run.result.details.evaluation.issues_found %}
+                            <li>{{ issue }}</li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if run.result.details.requires_approval and not run.approved %}
+                <div class="approval-actions">
+                    <h3>Approval Required</h3>
+                    <p>This patch requires manual review before merging.</p>
+                    
+                    <form id="approval-form">
+                        <textarea id="approval-comment" placeholder="Optional comment..."></textarea>
+                        <div class="button-group">
+                            <button type="button" class="btn btn-success" onclick="approve(true)">✅ Approve & Merge</button>
+                            <button type="button" class="btn btn-danger" onclick="approve(false)">❌ Reject</button>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if run.approved != None %}
+                <div class="approval-result {{ 'success' if run.approved else 'danger' }}">
+                    <p><strong>{{ 'Approved' if run.approved else 'Rejected' }}</strong></p>
+                    {% if run.approval_comment %}
+                    <p>Comment: {{ run.approval_comment }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function approve(approved) {
+            const comment = document.getElementById('approval-comment').value;
+            
+            fetch('/api/approve', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    run_id: '{{ run.run_id }}',
+                    approved: approved,
+                    comment: comment
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                alert(approved ? 'Patch approved and merged!' : 'Patch rejected');
+                location.reload();
+            })
+            .catch(err => alert('Error: ' + err));
+        }
+    </script>
+</body>
+</html>

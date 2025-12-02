@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Healing Code Agent</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Self-Healing Code Agent</h1>
+            <p class="subtitle">Autonomous bug detection and repair system</p>
+        </header>
+
+        <nav>
+            <a href="/" class="active">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="#" id="notifications-link">
+                Notifications 
+                <span id="notification-badge" class="badge">0</span>
+            </a>
+        </nav>
+
+        <main>
+            <section class="hero">
+                <h2>Start Self-Healing</h2>
+                <form id="heal-form">
+                    <div class="form-group">
+                        <label for="target-file">Target File (optional)</label>
+                        <input type="text" id="target-file" placeholder="path/to/file.py">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="stack-trace">Stack Trace (optional)</label>
+                        <textarea id="stack-trace" rows="10" placeholder="Paste stack trace here..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="repo-path">Repository Path</label>
+                        <input type="text" id="repo-path" value="." placeholder=".">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">🚀 Start Healing</button>
+                </form>
+            </section>
+
+            <section class="status" id="status-section" style="display: none;">
+                <h3>Healing in Progress...</h3>
+                <div class="progress-bar">
+                    <div class="progress" id="progress"></div>
+                </div>
+                <p id="status-message">Initializing...</p>
+            </section>
+
+            <section class="features">
+                <h2>Features</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h3>🔍 Smart Analysis</h3>
+                        <p>AI-powered bug detection using static analysis and LLMs</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔧 Auto-Fix</h3>
+                        <p>Generates minimal patches with test validation</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🧪 Test Generation</h3>
+                        <p>Creates tests for uncovered code automatically</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🧠 Self-Learning</h3>
+                        <p>Learns from past fixes to improve over time</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔗 Multi-File Aware</h3>
+                        <p>Analyzes dependencies and cross-file impacts</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>✅ Human Approval</h3>
+                        <p>Review and approve patches before merging</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

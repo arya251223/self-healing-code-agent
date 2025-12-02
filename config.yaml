@@ -1,0 +1,90 @@
+# Self-Healing Code Agent Configuration
+
+models:
+  mistral:
+    name: "mistral:7b-instruct"
+    host: "http://localhost:11434"
+    temperature: 0.1
+    max_tokens: 2048
+    timeout: 60
+    
+  codellama:
+    name: "codellama:7b"
+    host: "http://localhost:11434"
+    temperature: 0.2
+    max_tokens: 4096
+    timeout: 90
+    
+  starcoder:
+    name: "starcoder2:7b"
+    host: "http://localhost:11434"
+    temperature: 0.1
+    max_tokens: 2048
+    timeout: 60
+
+healing:
+  max_attempts: 5
+  max_patch_lines: 25
+  test_timeout: 20
+  confidence_threshold: 0.7
+  auto_merge_threshold: 0.9
+  
+sandbox:
+  type: "docker"  # or "venv"
+  timeout: 30
+  memory_limit: "512m"
+  cpu_limit: 1.0
+  
+github:
+  enabled: true
+  webhook_secret: "${GITHUB_WEBHOOK_SECRET}"
+  auto_pr: true
+  require_approval_for_main: true
+  
+notifications:
+  slack:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    
+logging:
+  level: "INFO"
+  format: "json"
+  retention_days: 30
+  
+learning:
+  enabled: true
+  vector_store: "chromadb"
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  min_examples: 10
+  
+web:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+
+# Git Auto-Healing Configuration
+git_auto:
+  enabled: true
+  
+  # Auto-push timeout for low-risk patches (seconds)
+  low_risk_timeout: 30
+  
+  # Risk levels that require manual approval
+  require_approval_risks: ['MEDIUM', 'HIGH']
+  
+  # Watch for file changes
+  watch_enabled: true
+  
+  # Auto-scan on commit/push
+  scan_on_commit: true
+  scan_on_push: true
+  
+  # Branches to auto-heal
+  auto_branches: ['main', 'master', 'develop']
+  
+  # Branches that always require approval
+  protected_branches: ['main', 'master', 'production']

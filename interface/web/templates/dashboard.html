@@ -1,0 +1,338 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Self-Healing Code Agent</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Dashboard</h1>
+        </header>
+
+        <nav>
+            <a href="/">Home</a>
+            <a href="/dashboard" class="active">Dashboard</a>
+            <a href="#" id="notifications-link">
+                Notifications 
+                <span id="notification-badge" class="badge">{{ unread_count }}</span>
+            </a>
+        </nav>
+
+        <main>
+            <!-- Auto-Healing Control -->
+            <section class="auto-healing-control">
+                <h2>🤖 Automatic Healing</h2>
+                
+                <div class="auto-status">
+                    <button onclick="toggleAutoHealing()" id="auto-toggle-btn" class="btn btn-primary">
+                        Start Auto-Healing
+                    </button>
+                    <span id="auto-status-text" class="status-indicator">⚪ Inactive</span>
+                </div>
+                
+                <!-- Pending Approvals Section -->
+                <div id="pending-approvals-section" style="margin-top: 30px; display: none;">
+                    <h3>⏱️  Pending Approvals</h3>
+                    <div id="pending-approvals-container"></div>
+                </div>
+            </section>
+
+            <!-- Statistics -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="total-runs">-</h3>
+                    <p>Total Runs</p>
+                </div>
+                <div class="stat-card success">
+                    <h3 id="successful-runs">-</h3>
+                    <p>Successful</p>
+                </div>
+                <div class="stat-card warning">
+                    <h3 id="escalated-runs">-</h3>
+                    <p>Escalated</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="success-rate">-</h3>
+                    <p>Success Rate</p>
+                </div>
+            </section>
+
+            <!-- Recent Runs -->
+            <section class="recent-runs">
+                <h2>Recent Healing Runs</h2>
+                <div id="runs-container">
+                    {% if recent_runs %}
+                        {% for run in recent_runs %}
+                        <div class="run-card {{ run.result.status.lower() }}">
+                            <div class="run-header">
+                                <h3>Run {{ run.run_id[:8] }}</h3>
+                                <span class="status-badge">{{ run.result.status }}</span>
+                            </div>
+                            <div class="run-details">
+                                <p><strong>Time:</strong> {{ run.start_time }}</p>
+                                <p><strong>Duration:</strong> {{ "%.2f"|format(run.duration_seconds) }}s</p>
+                                {% if run.metadata.target_file %}
+                                <p><strong>File:</strong> {{ run.metadata.target_file }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="run-actions">
+                                <a href="/patch-review/{{ run.run_id }}" class="btn btn-small">View Details</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="empty-state">No healing runs yet. Start one from the <a href="/">home page</a>!</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Notifications Panel -->
+            <section class="notifications-panel" id="notifications-panel" style="display: none;">
+                <h2>Notifications</h2>
+                <div id="notifications-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        let autoHealingActive = false;
+        let pendingApprovalsPoll = null;
+
+        // Toggle auto-healing
+        async function toggleAutoHealing() {
+            const endpoint = autoHealingActive ? '/api/auto-healing/stop' : '/api/auto-healing/start';
+            
+            try {
+                const response = await fetch(endpoint, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'started') {
+                    autoHealingActive = true;
+                    document.getElementById('auto-toggle-btn').textContent = 'Stop Auto-Healing';
+                    document.getElementById('auto-toggle-btn').className = 'btn btn-danger';
+                    document.getElementById('auto-status-text').textContent = '🟢 Active';
+                    document.getElementById('auto-status-text').className = 'status-indicator active';
+                    
+                    // Show pending approvals section
+                    document.getElementById('pending-approvals-section').style.display = 'block';
+                    
+                    // Start polling
+                    startPendingApprovalPolling();
+                } else {
+                    autoHealingActive = false;
+                    document.getElementById('auto-toggle-btn').textContent = 'Start Auto-Healing';
+                    document.getElementById('auto-toggle-btn').className = 'btn btn-primary';
+                    document.getElementById('auto-status-text').textContent = '⚪ Inactive';
+                    document.getElementById('auto-status-text').className = 'status-indicator';
+                    
+                    // Hide pending approvals
+                    document.getElementById('pending-approvals-section').style.display = 'none';
+                    
+                    // Stop polling
+                    if (pendingApprovalsPoll) {
+                        clearInterval(pendingApprovalsPoll);
+                    }
+                }
+            } catch (error) {
+                alert('Error: ' + error);
+            }
+        }
+
+        // Load pending approvals
+        async function loadPendingApprovals() {
+            try {
+                const response = await fetch('/api/auto-healing/pending');
+                const data = await response.json();
+                
+                const container = document.getElementById('pending-approvals-container');
+                
+                if (data.pending.length === 0) {
+                    container.innerHTML = '<p class="empty-state">No pending approvals</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.pending.map(item => {
+                    const timeRemaining = item.time_remaining ? Math.floor(item.time_remaining) : null;
+                    
+                    return `
+                        <div class="approval-card ${item.risk.toLowerCase()}" id="approval-${item.run_id}">
+                            <div class="approval-header">
+                                <div>
+                                    <h4>📄 ${item.file}</h4>
+                                    <p class="run-id-small">Run: ${item.run_id.substring(0, 8)}</p>
+                                </div>
+                                <span class="risk-badge ${item.risk.toLowerCase()}">${item.risk} RISK</span>
+                            </div>
+                            
+                            <div class="approval-details">
+                                <p><strong>📅 Time:</strong> ${new Date(item.timestamp).toLocaleString()}</p>
+                                ${timeRemaining !== null ? `
+                                    <p class="countdown-text">
+                                        <strong>⏱️  Auto-push in:</strong> 
+                                        <span class="countdown" data-remaining="${timeRemaining}" data-run-id="${item.run_id}">
+                                            ${timeRemaining}s
+                                        </span>
+                                    </p>
+                                ` : ''}
+                                ${item.requires_manual ? 
+                                    '<p class="manual-required">⚠️ Manual approval required - Will NOT auto-push</p>' 
+                                    : 
+                                    '<p class="auto-push-info">✅ Will auto-push after timeout unless rejected</p>'
+                                }
+                            </div>
+                            
+                            <div class="approval-actions">
+                                <button 
+                                    onclick="approveAutoPush('${item.run_id}', true)" 
+                                    class="btn btn-success"
+                                    id="approve-${item.run_id}">
+                                    ✅ Approve & Push Now
+                                </button>
+                                <button 
+                                    onclick="approveAutoPush('${item.run_id}', false)" 
+                                    class="btn btn-danger"
+                                    id="reject-${item.run_id}">
+                                    ❌ Reject & Rollback
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Start countdown timers
+                updateCountdowns();
+            } catch (error) {
+                console.error('Failed to load pending approvals:', error);
+            }
+        }
+
+        // Approve or reject auto-push
+        async function approveAutoPush(runId, approve) {
+            const action = approve ? 'Approve' : 'Reject';
+            
+            // Disable buttons
+            document.getElementById(`approve-${runId}`).disabled = true;
+            document.getElementById(`reject-${runId}`).disabled = true;
+            
+            try {
+                const response = await fetch(`/api/auto-healing/approve/${runId}?approve=${approve}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show success message
+                    const card = document.getElementById(`approval-${runId}`);
+                    card.innerHTML = `
+                        <div class="approval-result ${approve ? 'success' : 'rejected'}">
+                            <h3>${approve ? '✅ Approved & Pushed!' : '❌ Rejected & Rolled Back'}</h3>
+                            <p>${approve ? 'Changes committed and pushed to repository' : 'Changes discarded'}</p>
+                            ${result.commit ? `<p><strong>Commit:</strong> ${result.commit.substring(0, 8)}</p>` : ''}
+                        </div>
+                    `;
+                    
+                    // Remove after 3 seconds
+                    setTimeout(() => {
+                        loadPendingApprovals();
+                    }, 3000);
+                } else {
+                    alert(`Error ${action}ing: ` + result.error);
+                    // Re-enable buttons
+                    document.getElementById(`approve-${runId}`).disabled = false;
+                    document.getElementById(`reject-${runId}`).disabled = false;
+                }
+            } catch (error) {
+                alert(`Error ${action}ing: ` + error);
+                document.getElementById(`approve-${runId}`).disabled = false;
+                document.getElementById(`reject-${runId}`).disabled = false;
+            }
+        }
+
+        // Update countdown timers
+        function updateCountdowns() {
+            const countdowns = document.querySelectorAll('.countdown');
+            
+            countdowns.forEach(elem => {
+                const runId = elem.dataset.runId;
+                let remaining = parseFloat(elem.dataset.remaining);
+                
+                // Clear any existing interval
+                if (elem.countdownInterval) {
+                    clearInterval(elem.countdownInterval);
+                }
+                
+                elem.countdownInterval = setInterval(() => {
+                    remaining--;
+                    elem.dataset.remaining = remaining;
+                    
+                    if (remaining <= 0) {
+                        elem.textContent = '🚀 Pushing...';
+                        elem.className = 'countdown pushing';
+                        clearInterval(elem.countdownInterval);
+                        
+                        // Reload after push
+                        setTimeout(() => {
+                            loadPendingApprovals();
+                        }, 2000);
+                    } else {
+                        elem.textContent = remaining + 's';
+                        
+                        // Change color based on time remaining
+                        if (remaining <= 5) {
+                            elem.className = 'countdown urgent';
+                        } else if (remaining <= 10) {
+                            elem.className = 'countdown warning';
+                        }
+                    }
+                }, 1000);
+            });
+        }
+
+        // Start polling for pending approvals
+        function startPendingApprovalPolling() {
+            // Load immediately
+            loadPendingApprovals();
+            
+            // Poll every 3 seconds
+            pendingApprovalsPoll = setInterval(() => {
+                if (autoHealingActive) {
+                    loadPendingApprovals();
+                }
+            }, 3000);
+        }
+
+        // Load stats
+        fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('total-runs').textContent = data.total_runs;
+                document.getElementById('successful-runs').textContent = data.successful;
+                document.getElementById('escalated-runs').textContent = data.escalated;
+                document.getElementById('success-rate').textContent = (data.success_rate * 100).toFixed(1) + '%';
+            })
+            .catch(err => console.error('Failed to load stats:', err));
+
+        // Load auto-healing status on page load
+        fetch('/api/auto-healing/status')
+            .then(r => r.json())
+            .then(data => {
+                autoHealingActive = data.enabled;
+                if (autoHealingActive) {
+                    document.getElementById('auto-toggle-btn').textContent = 'Stop Auto-Healing';
+                    document.getElementById('auto-toggle-btn').className = 'btn btn-danger';
+                    document.getElementById('auto-status-text').textContent = '🟢 Active';
+                    document.getElementById('auto-status-text').className = 'status-indicator active';
+                    document.getElementById('pending-approvals-section').style.display = 'block';
+                    startPendingApprovalPolling();
+                }
+            })
+            .catch(err => console.error('Failed to load auto-healing status:', err));
+    </script>
+</body>
+</html>

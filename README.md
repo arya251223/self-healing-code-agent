@@ -971,7 +971,7 @@ SOFTWARE.
 
 - **Issues**: [GitHub Issues](https://github.com/arya251223/self-healing-code-agent/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/arya251223/self-healing-code-agent/discussions)
-- **Email**: your.email@example.com
+- **Email**: aryan04042005@gmail.com
 - **Documentation**: [Wiki](https://github.com/arya251223/self-healing-code-agent/wiki)
 
 ---

@@ -1069,7 +1069,7 @@ A: Free if you run local models. Cloud API usage costs vary ($0.10-$1 per healin
 
 **Version**: 1.0.0  
 **Last Updated**: November 2025 
-**Author**: **Aryan**
+**Author**: Aryan
 **Status**: ✅ Production Ready
 
 ---
